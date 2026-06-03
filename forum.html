@@ -569,7 +569,7 @@ function renderNavAuth() {
       : '<div class="nav-avatar" onclick="showPage(\'profile\')">'+initial+'</div>';
     var isAdminMod = currentUserData.role==='admin'||currentUserData.role==='mod';
     var adminBtn = isAdminMod ? '<button class="nav-btn" onclick="showPage(\'admin\')" style="font-size:10px;padding:4px 8px">Admin</button>' : '';
-    area.innerHTML = photoHTML + adminBtn + '<button class="nav-btn" style="padding:5px 10px;font-size:11px" onclick="doLogout()">Sair</button>';
+    area.innerHTML = photoHTML + adminBtn;
   } else {
     area.innerHTML = '<button class="nav-btn primary" onclick="showPage(\'auth\')">Entrar</button>';
   }
@@ -1095,7 +1095,10 @@ function loadProfile(uid) {
       : '<div class="profile-avatar-big">' + pNick[0].toUpperCase() + '</div>';
     var bioEl = pBio ? '<div style="font-size:13px;color:var(--text2);margin-bottom:8px;font-style:italic">' + esc(pBio) + '</div>' : '';
     var editBtn = isOwnProfile
-      ? '<button class="btn-full btn-yellow" style="margin:10px 0 0;max-width:200px;margin-left:auto;margin-right:auto;padding:10px;font-size:14px" onclick="showEditProfile()">Editar Perfil</button>'
+      ? '<div style="display:flex;gap:8px;margin:10px auto 0;max-width:280px">'
+        +'<button class="btn-full btn-yellow" style="flex:1;padding:10px;font-size:14px" onclick="showEditProfile()">Editar Perfil</button>'
+        +'<button onclick="doLogout()" style="flex-shrink:0;padding:10px 14px;border-radius:10px;background:transparent;border:1.5px solid rgba(239,68,68,.4);color:#ef4444;font-size:13px;font-weight:700;cursor:pointer">Sair</button>'
+        +'</div>'
       : '';
     var isAdmin = currentUserData && (currentUserData.role==="admin"||currentUserData.role==="mod");
     var adminControls = '';
