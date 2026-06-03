@@ -727,7 +727,7 @@ function loadQuestions() {
   query.get().then(function(snap) {
     questionsCache = [];
     snap.forEach(function(doc) { questionsCache.push({id:doc.id,...doc.data()}); });
-    renderQuestions(questionsCache);
+    filterQuestions();
   });
 }
 
@@ -756,11 +756,13 @@ function renderQuestions(list) {
       : '<div style="width:20px;height:20px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--yellow);flex-shrink:0;vertical-align:middle">'+initial+'</div>';
     var clickAction = currentUser ? 'openQuestion(\''+q.id+'\')' : 'showLoginModal()';
     var cardBorder = !currentUser ? 'border-color:rgba(245,197,24,.2)' : '';
+    var modelBig = q.model ? '<span style="font-size:14px;font-weight:800;color:#ffffff;background:rgba(255,255,255,.08);padding:3px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15)">'+esc(q.model)+'</span>' : '';
+    var errSmall = q.errorType ? '<span style="font-size:10px;font-weight:500;color:#6a6a7a;padding:2px 6px;border-radius:4px;background:var(--bg3)">'+esc(q.errorType)+'</span>' : '';
     return '<div class="q-card" onclick="'+clickAction+'" style="'+cardBorder+'">'
-      +'<div class="q-card-top">'+badge+model+errType+lockIcon+'</div>'
+      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+badge+modelBig+errSmall+lockIcon+'</div>'
       +'<div class="q-title">'+esc(q.title)+'</div>'
-      +'<div class="q-preview">'+esc(q.body||'')+'</div>'
-      +'<div class="q-footer" style="align-items:center">'
+      +'<div class="q-preview" style="font-size:13px;color:#b0b0c8;margin-top:4px">'+esc(q.body||'')+'</div>'
+      +'<div class="q-footer" style="align-items:center;margin-top:8px">'
       +(currentUser ? miniAvatar+'<span class="q-meta"><strong>'+esc(q.authorNickname||'')+'</strong> &bull; '+date+'</span>' : '')
       +ansEl+lockEl
       +'</div>'
@@ -783,6 +785,7 @@ function switchTab(tab, el) {
 
 function filterQuestions() {
   var filtered = questionsCache;
+  if (currentTab==='recent') filtered = questionsCache.filter(function(q){return !q.solved;});
   if (currentTab==='unanswered') filtered = questionsCache.filter(function(q){return !q.answerCount||q.answerCount===0;});
   if (currentTab==='solved') filtered = questionsCache.filter(function(q){return q.solved;});
   renderQuestions(filtered);
