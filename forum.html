@@ -1374,6 +1374,22 @@ function loadChat() {
     typingEl.textContent = others.length + ' pessoas digitando...';
   });
   if (chatListener) chatListener();
+
+  // Hover effect for chat action buttons via event delegation
+  var msgsEl = document.getElementById('chat-msgs');
+  if (msgsEl) {
+    msgsEl.addEventListener('mouseover', function(e) {
+      var row = e.target.closest('[data-msgrow]');
+      if (row) row.querySelectorAll('[data-chat-act]').forEach(function(x){x.style.display='flex';});
+    });
+    msgsEl.addEventListener('mouseout', function(e) {
+      var row = e.target.closest('[data-msgrow]');
+      if (row && !row.contains(e.relatedTarget)) {
+        row.querySelectorAll('[data-chat-act]').forEach(function(x){x.style.display='none';});
+      }
+    });
+  }
+
   chatListener = rtdb.ref('chat').orderByChild('ts').limitToLast(60).on('value', function(snap) {
     var msgs = [];
     snap.forEach(function(child) { msgs.push({id:child.key,...child.val()}); });
@@ -1449,7 +1465,7 @@ function renderChat(msgs) {
     var actBtns = actParts.join('');
 
     var cls = isOwn ? 'chat-msg own' : 'chat-msg';
-    html += '<div class="' + cls + '" style="align-items:flex-start;margin-bottom:' + (sameGroup?'2':'10') + 'px;gap:8px" onmouseenter="this.querySelectorAll('[data-chat-act]').forEach(function(x){x.style.display='flex'})" onmouseleave="this.querySelectorAll('[data-chat-act]').forEach(function(x){x.style.display='none'})">'
+    html += '<div class="' + cls + '" data-msgrow style="align-items:flex-start;margin-bottom:'+(sameGroup?'2':'10')+'px;gap:8px">';
       + (isOwn ? actBtns : '')
       + avatarContent
       + '<div style="max-width:72%;min-width:0">'
