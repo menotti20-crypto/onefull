@@ -429,7 +429,7 @@ body{background:var(--bg);color:var(--text);font-family:"SF Pro Display",-apple-
 <!-- DM LIST PAGE -->
 <div class="page" id="page-dm">
   <button class="back-btn" onclick="showPage('home')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg> Voltar</button>
-  <h2 style="margin-bottom:14px;font-size:16px;font-weight:800">&#128172; Mensagens Diretas</h2>
+  <h2 style="margin-bottom:14px;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="1" fill="#f5c518"/><circle cx="12" cy="10" r="1" fill="#f5c518"/><circle cx="15" cy="10" r="1" fill="#f5c518"/></svg> Mensagens Diretas</h2>
   <div id="dm-list-content"><div class="loader">Carregando...</div></div>
 </div>
 
@@ -729,14 +729,14 @@ function renderQuestions(list) {
       return '<div class="q-card" style="pointer-events:none">'
         +'<div class="q-card-top">'+badge+model+'</div>'
         +'<div class="q-title">'+esc(q.title)+'</div>'
-        +'<div class="q-preview" style="filter:blur(4px);user-select:none">████████████████████████</div>'
+        +'<div class="q-preview">'+esc(q.body||'')+'</div>'
         +'<div class="q-footer">'+ansEl+'</div>'
         +'</div>';
     }).join('');
 
     el.innerHTML = preview
       + '<div style="position:relative;margin:-20px -4px 0;padding:60px 20px 28px;background:linear-gradient(to bottom,transparent,#0a0a0f 30%);border-radius:0 0 16px 16px;text-align:center">'
-      + '<div style="font-size:26px;margin-bottom:10px">🔐</div>'
+      + '<div style="margin-bottom:12px;display:flex;justify-content:center"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="#f5c518"/></svg></div>'
       + '<div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:6px">Junte-se à comunidade</div>'
       + '<div style="font-size:13px;color:#9090a8;line-height:1.6;margin-bottom:20px">Veja todas as perguntas, respostas e resolva problemas do seu iPhone com quem entende</div>'
       + '<button onclick="authMode=\'register\';showPage(\'auth\')" style="width:100%;padding:14px;border-radius:12px;background:var(--yellow);color:#000;border:none;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;letter-spacing:.5px">Criar conta grátis</button>'
@@ -776,7 +776,7 @@ function renderQuestions(list) {
   // Banner de login para visitantes — aparece abaixo das perguntas
   if (!currentUser) {
     el.innerHTML += '<div style="margin-top:14px;background:linear-gradient(135deg,#111118 0%,#1a1a28 100%);border:1.5px solid rgba(245,197,24,.25);border-radius:14px;padding:20px 16px;text-align:center">'
-      +'<div style="font-size:22px;margin-bottom:8px">🔐</div>'
+      +'<div style="margin-bottom:10px;display:flex;justify-content:center"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="#f5c518"/></svg></div>'
       +'<div style="font-size:15px;font-weight:800;color:#e8e8f0;margin-bottom:6px">Acesse o fórum completo</div>'
       +'<div style="font-size:13px;color:#9090a8;line-height:1.6;margin-bottom:16px">Faça login ou cadastre-se para ver as respostas, perguntar, votar e participar da comunidade</div>'
       +'<div style="display:flex;gap:10px;justify-content:center">'
@@ -875,7 +875,7 @@ function renderQuestion(q) {
     +'<div id="answers-container"></div>'
     +(currentUser
       ? (q.solved
-        ? '<div style="background:linear-gradient(135deg,#0a1a0a,#0d200d);border:1.5px solid rgba(34,197,94,.3);border-radius:12px;padding:14px;text-align:center;margin-top:10px"><span style="font-size:13px;color:#22c55e;font-weight:700">✅ Pergunta encerrada — já foi resolvida</span></div>'
+        ? '<div style="background:linear-gradient(135deg,#0a1a0a,#0d200d);border:1.5px solid rgba(34,197,94,.3);border-radius:12px;padding:14px;text-align:center;margin-top:10px"><span style="font-size:13px;color:#22c55e;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Pergunta encerrada — já foi resolvida</span></div>'
         : '<div class="answer-form"><h3>Sua Resposta</h3><textarea id="answer-text" placeholder="Escreva sua resposta aqui..."></textarea><button class="btn-full btn-yellow" style="margin-top:8px" onclick="submitAnswer(\''+q.id+'\')">Publicar Resposta</button></div>')
       : '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;margin-top:10px"><span style="font-size:13px;color:var(--text2)">Faça login para responder</span></div>');
   el.innerHTML = html;
@@ -1247,7 +1247,7 @@ function loadRanking() {
     el.innerHTML = users.map(function(u,i) {
       var pos = i+1;
       var posClass = pos===1?'gold':pos===2?'silver':pos===3?'bronze':'';
-      var posTxt = pos===1?'🏆':pos===2?'🥈':pos===3?'🥉':pos;
+      var posTxt = pos===1?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>':pos===2?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>':pos===3?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>':pos;
       var score = getScore(u.totalLikes||0, u.totalDislikes||0);
       var maxLikes = users[0].totalLikes||1;
       var fillPct = Math.round(((u.totalLikes||0)/maxLikes)*100);
@@ -1805,7 +1805,7 @@ function loadNotifications() {
       }
 
       if (!html) {
-        html = '<div class="empty"><div class="empty-icon">🔔</div><h3>Sem notificações</h3><p>Aqui aparecem respostas, curtidas e pedidos de amizade</p></div>';
+        html = '<div class="empty"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4a4a5a" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><h3>Sem notificações</h3><p>Aqui aparecem respostas, curtidas e pedidos de amizade</p></div>';
       }
       el.innerHTML = '<h3 style="font-size:15px;font-weight:800;margin-bottom:12px">Notificações</h3>' + html;
     });
