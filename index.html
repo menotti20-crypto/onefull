@@ -253,10 +253,7 @@ body{background:#111114;color:#e8e8f0;font-family:-apple-system,BlinkMacSystemFo
 
   <div id="upload-section" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <button onclick="goBack()" style="display:flex;align-items:center;gap:5px;background:transparent;border:1.5px solid #2a2a38;border-radius:8px;padding:6px 11px;color:#9090a8;font-size:12px;font-weight:700;cursor:pointer;transition:.15s" onmouseover="this.style.borderColor='#f5c518';this.style.color='#f5c518'" onmouseout="this.style.borderColor='#2a2a38';this.style.color='#9090a8'">&#8592; Voltar</button>
-        <div style="font-size:15px;font-weight:800;color:#e8e8f0">Analisar Panic Full</div>
-      </div>
+      <div style="font-size:15px;font-weight:800;color:#e8e8f0">Analisar Panic Full</div>
       <a href="forum.html" style="display:flex;align-items:center;gap:5px;font-size:11px;color:#f5c518;background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.3);border-radius:7px;padding:5px 10px;text-decoration:none;font-weight:700"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>ONE FORUM</a>
     </div>
     <div class="upload-card" id="dropzone">
@@ -652,39 +649,17 @@ function renderResult(parsed){
     }
 
     // -- LINHA DO LOG (se encontrou) ------------------------------
+    
 
-  }
 
-  // -- BOTÃO PRECISA DE AJUDA ------------------------------------
-  h+="<div style=\"margin-top:8px;background:linear-gradient(135deg,#1a1200 0%,#1e1600 100%);border:1.5px solid rgba(245,197,24,.3);border-radius:13px;padding:16px;text-align:center\">";
-  h+="<div style=\"font-size:13px;font-weight:800;color:#f5c518;margin-bottom:4px\">&#128172; Precisa de ajuda?</div>";
-  h+="<div style=\"font-size:12px;color:#9090a8;margin-bottom:12px;line-height:1.5\">Crie uma pergunta no fórum com as informações do seu panic já preenchidas automaticamente</div>";
-  h+="<button onclick=\"goToForum()\" style=\"background:#f5c518;color:#000;border:none;border-radius:10px;padding:11px 20px;font-size:14px;font-weight:800;cursor:pointer;width:100%;letter-spacing:.5px\">Perguntar no ONE FORUM &rarr;</button>";
-  h+="</div>";
-
+  
   document.getElementById("result").innerHTML=h;
   document.getElementById("result").style.display="block";
   document.getElementById("upload-section").style.display="none";
   window.scrollTo(0,0);
-
-  // Salva dados do panic para o fórum
-  window._lastParsed=parsed;
+}
 }
 
-function goToForum(){
-  var p=window._lastParsed;
-  if(!p)return;
-  var data={
-    deviceName:p.deviceName||"",
-    device:p.device||"",
-    ios:p.ios||"",
-    panicType:p.panicType||"",
-    panicStr:(p.panicStr||"").substring(0,600),
-    title:(p.matches&&p.matches.length?p.matches[0].title:p.panicType)||""
-  };
-  try{sessionStorage.setItem("onefull_panic",JSON.stringify(data));}catch(e){}
-  window.location.href="forum.html?from=analyzer";
-}
 function toggleVerMais(btn){
   var sec=document.getElementById("ver-mais-section");
   var arrow=document.getElementById("ver-mais-arrow");
