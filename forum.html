@@ -533,7 +533,8 @@ var questionsCache = [];
 auth.onAuthStateChanged(function(user) {
   currentUser = user;
   if (user) {
-    db.collection('users').doc(user.uid).get().then(function(doc) {
+    // onSnapshot garante sempre o dado mais recente (inclusive role)
+    db.collection('users').doc(user.uid).onSnapshot(function(doc) {
       if (doc.exists) {
         currentUserData = doc.data();
       } else {
@@ -541,41 +542,43 @@ auth.onAuthStateChanged(function(user) {
         db.collection('users').doc(user.uid).set(currentUserData);
       }
       renderNavAuth();
-      setupPresence();
-      // Mostra ícones nav PRIMEIRO
-      var dmWrap = document.getElementById('dm-nav-wrap');
-      var notifWrap = document.getElementById('notif-nav-wrap');
-      if (dmWrap) dmWrap.style.display = 'inline-flex';
-      if (notifWrap) notifWrap.style.display = 'inline-flex';
-      loadNotifications();
-      updateDMBadge();
-      // Badge em tempo real — após mostrar os ícones
-      try {
-        var _lastNotifCount = -1;
-        db.collection('notifications').where('to','==',user.uid)
-          .onSnapshot(function(snap) {
-            var unread = 0;
-            snap.forEach(function(doc) { if (!doc.data().read) unread++; });
-            db.collection('friendRequests').where('to','==',user.uid).where('status','==','pending').get().then(function(frSnap) {
-              var total = unread + frSnap.size;
-              var badge = document.getElementById('notif-badge');
-              var wrap = document.getElementById('notif-nav-wrap');
-              if (badge) {
-                badge.textContent = total;
-                badge.style.display = total > 0 ? 'flex' : 'none';
-                if (total > 0) { badge.classList.add('has-unread'); } else { badge.classList.remove('has-unread'); }
-                if (total > _lastNotifCount && _lastNotifCount >= 0) {
-                  if (wrap) { wrap.style.transform='scale(1.3)'; setTimeout(function(){wrap.style.transform='';},300); }
-                }
-                _lastNotifCount = total;
-              }
-            }).catch(function(){
-              var badge = document.getElementById('notif-badge');
-              if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none'; _lastNotifCount = unread; }
-            });
-          }, function(err) { console.warn('Notif listener:', err); });
-      } catch(e) { console.warn('Notif setup:', e); }
     });
+    setupPresence();
+    // Mostra ícones nav
+    var dmWrap = document.getElementById('dm-nav-wrap');
+    var notifWrap = document.getElementById('notif-nav-wrap');
+    if (dmWrap) dmWrap.style.display = 'inline-flex';
+    if (notifWrap) notifWrap.style.display = 'inline-flex';
+    loadNotifications();
+    updateDMBadge();
+    // Badge em tempo real via RTDB (sem precisar de índice)
+    try {
+      var _lastNotifCount = -1;
+      // Salva contagem de não lidas no RTDB ao criar notificação
+      // Aqui lê diretamente do Firestore sem orderBy
+      db.collection('notifications').where('to','==',user.uid)
+        .onSnapshot(function(snap) {
+          var unread = 0;
+          snap.forEach(function(d) { if (!d.data().read) unread++; });
+          db.collection('friendRequests').where('to','==',user.uid).where('status','==','pending').get().then(function(frSnap) {
+            var total = unread + frSnap.size;
+            var badge = document.getElementById('notif-badge');
+            var wrap = document.getElementById('notif-nav-wrap');
+            if (badge) {
+              badge.textContent = total;
+              badge.style.display = total > 0 ? 'flex' : 'none';
+              if (total > 0) { badge.classList.add('has-unread'); } else { badge.classList.remove('has-unread'); }
+              if (total > _lastNotifCount && _lastNotifCount >= 0) {
+                if (wrap) { wrap.style.transform='scale(1.3)'; setTimeout(function(){wrap.style.transform='';},300); }
+              }
+              _lastNotifCount = total;
+            }
+          }).catch(function(){
+            var badge = document.getElementById('notif-badge');
+            if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none'; if(unread>0)badge.classList.add('has-unread'); _lastNotifCount = unread; }
+          });
+        }, function(err) { console.warn('Notif listener err:', err.code, err.message); });
+    } catch(e) { console.warn('Notif setup:', e); }
   } else {
     currentUserData = null;
     renderNavAuth();
