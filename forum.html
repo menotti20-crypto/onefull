@@ -549,9 +549,9 @@ auth.onAuthStateChanged(function(user) {
     var notifWrap = document.getElementById('notif-nav-wrap');
     if (dmWrap) dmWrap.style.display = 'inline-flex';
     if (notifWrap) notifWrap.style.display = 'inline-flex';
-    loadNotifications();
     updateDMBadge();
-    // Badge via RTDB — mais confiável e instantâneo
+    // Badge via RTDB
+    var _rtdbFirst = true;
     rtdb.ref('notif_count/' + user.uid).on('value', function(snap) {
       var total = snap.val() || 0;
       var badge = document.getElementById('notif-badge');
@@ -559,8 +559,17 @@ auth.onAuthStateChanged(function(user) {
       if (badge) {
         badge.textContent = total;
         badge.style.display = total > 0 ? 'flex' : 'none';
-        if (total > 0) { badge.classList.add('has-unread'); } else { badge.classList.remove('has-unread'); }
-        if (total > 0 && wrap) { wrap.style.transform='scale(1.3)'; setTimeout(function(){wrap.style.transform='';},300); }
+        if (total > 0) {
+          badge.classList.add('has-unread');
+          // Pulsa só quando chega nova notificação (não no carregamento inicial)
+          if (!_rtdbFirst && wrap) {
+            wrap.style.transform='scale(1.3)';
+            setTimeout(function(){ wrap.style.transform=''; }, 300);
+          }
+        } else {
+          badge.classList.remove('has-unread');
+        }
+        _rtdbFirst = false;
       }
     });
   } else {
