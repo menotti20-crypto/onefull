@@ -551,34 +551,18 @@ auth.onAuthStateChanged(function(user) {
     if (notifWrap) notifWrap.style.display = 'inline-flex';
     loadNotifications();
     updateDMBadge();
-    // Badge em tempo real via RTDB (sem precisar de índice)
-    try {
-      var _lastNotifCount = -1;
-      // Salva contagem de não lidas no RTDB ao criar notificação
-      // Aqui lê diretamente do Firestore sem orderBy
-      db.collection('notifications').where('to','==',user.uid)
-        .onSnapshot(function(snap) {
-          var unread = 0;
-          snap.forEach(function(d) { if (!d.data().read) unread++; });
-          db.collection('friendRequests').where('to','==',user.uid).where('status','==','pending').get().then(function(frSnap) {
-            var total = unread + frSnap.size;
-            var badge = document.getElementById('notif-badge');
-            var wrap = document.getElementById('notif-nav-wrap');
-            if (badge) {
-              badge.textContent = total;
-              badge.style.display = total > 0 ? 'flex' : 'none';
-              if (total > 0) { badge.classList.add('has-unread'); } else { badge.classList.remove('has-unread'); }
-              if (total > _lastNotifCount && _lastNotifCount >= 0) {
-                if (wrap) { wrap.style.transform='scale(1.3)'; setTimeout(function(){wrap.style.transform='';},300); }
-              }
-              _lastNotifCount = total;
-            }
-          }).catch(function(){
-            var badge = document.getElementById('notif-badge');
-            if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none'; if(unread>0)badge.classList.add('has-unread'); _lastNotifCount = unread; }
-          });
-        }, function(err) { console.warn('Notif listener err:', err.code, err.message); });
-    } catch(e) { console.warn('Notif setup:', e); }
+    // Badge via RTDB — mais confiável e instantâneo
+    rtdb.ref('notif_count/' + user.uid).on('value', function(snap) {
+      var total = snap.val() || 0;
+      var badge = document.getElementById('notif-badge');
+      var wrap = document.getElementById('notif-nav-wrap');
+      if (badge) {
+        badge.textContent = total;
+        badge.style.display = total > 0 ? 'flex' : 'none';
+        if (total > 0) { badge.classList.add('has-unread'); } else { badge.classList.remove('has-unread'); }
+        if (total > 0 && wrap) { wrap.style.transform='scale(1.3)'; setTimeout(function(){wrap.style.transform='';},300); }
+      }
+    });
   } else {
     currentUserData = null;
     renderNavAuth();
@@ -620,7 +604,13 @@ function showPage(name) {
   if (name==='profile') loadProfile();
   if (name==='admin') loadAdmin();
   if (name==='dm') loadDMList();
-  if (name==='notif') { loadNotifications(); var b=document.getElementById('notif-badge'); if(b){b.style.display='none';b.classList.remove('has-unread');} }
+  if (name==='notif') {
+    loadNotifications();
+    var b=document.getElementById('notif-badge');
+    if(b){b.style.display='none';b.classList.remove('has-unread');}
+    // Zera contador no RTDB
+    if (currentUser) rtdb.ref('notif_count/'+currentUser.uid).set(0);
+  }
 }
 
 // ── AUTH ─────────────────────────────────────────────────────
@@ -910,8 +900,11 @@ function renderAnswers(answers) {
     var liked = currentUser && a.likedBy && a.likedBy.indexOf(currentUser.uid)>=0;
     var disliked = currentUser && a.dislikedBy && a.dislikedBy.indexOf(currentUser.uid)>=0;
     var isMine = currentUser && currentUser.uid===a.authorId;
-    var roleClass = a.authorRole==='admin'?'role-admin':a.authorRole==='mod'?'role-mod':'role-user';
-    var roleTxt = a.authorRole==='admin'?'Admin':a.authorRole==='mod'?'Mod':'Membro';
+    var isAdmin = currentUserData && (currentUserData.role==='admin'||currentUserData.role==='mod');
+    // Usa role atual se for a própria resposta, senão usa o salvo
+    var displayRole = isMine && currentUserData ? currentUserData.role : (a.authorRole||'user');
+    var roleClass = displayRole==='admin'?'role-admin':displayRole==='mod'?'role-mod':'role-user';
+    var roleTxt = displayRole==='admin'?'Admin':displayRole==='mod'?'Mod':'Membro';
     var date = a.createdAt ? timeAgo(a.createdAt.toDate()) : '';
     var delBtn = (isMine||isAdmin) ? '<button class="btn-sm red" style="font-size:11px;padding:3px 8px" onclick="deleteAnswer(\''+a.id+'\')">Excluir</button>' : '';
     var solveBtn = (isMineQ||isAdmin) && !a.best && !q.solved ? '<button class="btn-sm green" style="font-size:11px;padding:3px 8px" onclick="markAnswerSolved(\''+currentQId+'\',\''+a.id+'\')">✓ Melhor resposta</button>' : '';
@@ -1687,10 +1680,9 @@ function updateDMBadge() {
 // ── NOTIFICATIONS ────────────────────────────────────────────
 // ── NOTIFICATIONS ────────────────────────────────────────────
 function sendNotification(toUid, type, data) {
-  if (!toUid || toUid === currentUser.uid) return; // não notifica a si mesmo
+  if (!toUid || toUid === currentUser.uid) return;
   db.collection('notifications').add({
-    to: toUid,
-    type: type, // 'answer' | 'like' | 'friend_request'
+    to: toUid, type: type,
     fromUid: currentUser.uid,
     fromNick: currentUserData.nickname || 'Usuario',
     fromPhoto: currentUserData.photoURL || '',
@@ -1698,6 +1690,8 @@ function sendNotification(toUid, type, data) {
     read: false,
     createdAt: firebase.firestore.Timestamp.now()
   });
+  // Incrementa contador no RTDB para o badge aparecer instantaneamente
+  rtdb.ref('notif_count/' + toUid).transaction(function(val) { return (val || 0) + 1; });
 }
 
 function loadNotifications() {
