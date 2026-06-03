@@ -588,7 +588,7 @@ function showPage(name) {
   if (name==='profile') loadProfile();
   if (name==='admin') loadAdmin();
   if (name==='dm') loadDMList();
-  if (name==='notif') loadNotifications();
+  if (name==='notif') { loadNotifications(); var b=document.getElementById('notif-badge'); if(b){b.style.display='none';} }
 }
 
 // ── AUTH ─────────────────────────────────────────────────────
@@ -618,13 +618,20 @@ function doAuth() {
     if (nick.length<3) { showErr(errEl,'Apelido muito curto (min 3 caracteres)'); btn.disabled=false; btn.textContent='Cadastrar'; return; }
     // Register first, then check/save nickname
     auth.createUserWithEmailAndPassword(email,pass).then(function(cred) {
-      var userData = {
-        nickname: nick, email: email, role: 'user', points: 0,
-        totalLikes: 0, totalDislikes: 0, questionsToday: 0,
-        lastQuestionDate: '', joinedAt: firebase.firestore.Timestamp.now(),
-        banned: false
-      };
-      return db.collection('users').doc(cred.user.uid).set(userData);
+      // Verifica se já existe documento (evita sobrescrever role de admin)
+      return db.collection('users').doc(cred.user.uid).get().then(function(doc) {
+        if (doc.exists) {
+          // Já existe — só atualiza nickname se mudou
+          return db.collection('users').doc(cred.user.uid).update({nickname: nick, email: email});
+        }
+        var userData = {
+          nickname: nick, email: email, role: 'user', points: 0,
+          totalLikes: 0, totalDislikes: 0, questionsToday: 0,
+          lastQuestionDate: '', joinedAt: firebase.firestore.Timestamp.now(),
+          banned: false
+        };
+        return db.collection('users').doc(cred.user.uid).set(userData);
+      });
     }).then(function() {
       btn.disabled=false; btn.textContent='Cadastrar';
       toast('Cadastro realizado! Bem-vindo(a)!');
@@ -917,6 +924,7 @@ function voteAnswer(aid, type) {
   ref.get().then(function(doc) {
     if (!doc.exists) return;
     var data = doc.data();
+    if (data.authorId === currentUser.uid) { toast('Você não pode votar na própria resposta'); return; }
     var uid = currentUser.uid;
     var liked = (data.likedBy||[]).indexOf(uid)>=0;
     var disliked = (data.dislikedBy||[]).indexOf(uid)>=0;
@@ -1689,28 +1697,38 @@ function loadNotifications() {
               +'<div style="display:none;width:36px;height:36px;border-radius:50%;background:var(--bg3);align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--yellow)">'+initial+'</div>'
             : '<div style="width:36px;height:36px;border-radius:50%;background:var(--bg3);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--yellow)">'+initial+'</div>';
           var msg = '';
-          var icon = '';
+          var iconHTML = '';
           if (d.type === 'answer') {
-            icon = '💬';
-            msg = 'respondeu sua pergunta: <strong>'+esc((d.data&&d.data.questionTitle)||'')+'</strong>';
+            iconHTML = '<div style="width:32px;height:32px;border-radius:50%;background:#1a1a2e;border:1.5px solid #3b3b6e;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">💬</div>';
+            msg = 'respondeu sua pergunta';
           } else if (d.type === 'like') {
-            icon = '👍';
-            msg = 'curtiu sua resposta em: <strong>'+esc((d.data&&d.data.questionTitle)||'')+'</strong>';
+            iconHTML = '<div style="width:32px;height:32px;border-radius:50%;background:#1a1200;border:1.5px solid #f5c518;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">👍</div>';
+            msg = 'curtiu sua resposta';
           } else if (d.type === 'solved') {
-            icon = '✅';
-            msg = 'marcou sua resposta como melhor em: <strong>'+esc((d.data&&d.data.questionTitle)||'')+'</strong>';
+            iconHTML = '<div style="width:32px;height:32px;border-radius:50%;background:#0a1a0a;border:1.5px solid #22c55e;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">✅</div>';
+            msg = 'marcou sua resposta como melhor';
           }
-          var bg = d.read ? 'var(--bg2)' : 'linear-gradient(135deg,#111120,#191928)';
-          var border = d.read ? '1px solid var(--border)' : '1px solid rgba(245,197,24,.25)';
+          var questionTitle = (d.data&&d.data.questionTitle) ? esc(d.data.questionTitle) : '';
+          var bg = d.read ? 'var(--bg2)' : '#12121e';
+          var border = d.read ? '1px solid var(--border)' : '1.5px solid rgba(245,197,24,.3)';
           var ago = d.createdAt ? timeAgo(d.createdAt.toDate()) : '';
           var clickAction = d.data && d.data.questionId ? 'onclick="markNotifRead(\''+d._id+'\');openQuestion(\''+d.data.questionId+'\')"' : '';
-          html += '<div style="display:flex;align-items:center;gap:10px;background:'+bg+';border:'+border+';border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer" '+clickAction+'>'
+          html += '<div style="display:flex;align-items:flex-start;gap:10px;background:'+bg+';border:'+border+';border-radius:13px;padding:12px;margin-bottom:8px;cursor:pointer;position:relative" '+clickAction+'>'
+            // Avatar do usuário
             +avatarHTML
-            +'<div style="flex:1">'
-            +'<div style="font-size:13px;color:#e8e8f0">'+icon+' <strong style="color:var(--yellow)">'+esc(d.fromNick||'')+'</strong> '+msg+'</div>'
-            +'<div style="font-size:11px;color:var(--text2);margin-top:3px">'+ago+'</div>'
+            // Ícone de ação (pequeno, sobreposto)
+            +'<div style="position:relative;margin-right:2px">'
+            +iconHTML
             +'</div>'
-            +(d.read?'':'<div style="width:8px;height:8px;border-radius:50%;background:var(--yellow);flex-shrink:0"></div>')
+            +'<div style="flex:1;min-width:0">'
+            +'<div style="font-size:13px;color:#e8e8f0;line-height:1.45">'
+            +'<strong style="color:var(--yellow)">'+esc(d.fromNick||'')+'</strong>'
+            +' <span style="color:var(--text2)">'+msg+'</span>'
+            +(questionTitle ? '<br><span style="font-size:12px;color:#c0c0d8;font-weight:600">'+questionTitle+'</span>' : '')
+            +'</div>'
+            +'<div style="font-size:11px;color:var(--text2);margin-top:4px">'+ago+'</div>'
+            +'</div>'
+            +(d.read?'':'<div style="width:8px;height:8px;border-radius:50%;background:var(--yellow);flex-shrink:0;margin-top:4px"></div>')
             +'</div>';
         });
         // Mark all as read
