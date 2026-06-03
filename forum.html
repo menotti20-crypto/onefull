@@ -527,7 +527,16 @@ auth.onAuthStateChanged(function(user) {
         db.collection('users').doc(user.uid).set(currentUserData);
       }
       renderNavAuth();
-    setupPresence();
+      setupPresence();
+      // Badge em tempo real
+      db.collection('notifications').where('to','==',user.uid).where('read','==',false)
+        .onSnapshot(function(snap) {
+          db.collection('friendRequests').where('to','==',user.uid).where('status','==','pending').get().then(function(frSnap) {
+            var total = snap.size + frSnap.size;
+            var badge = document.getElementById('notif-badge');
+            if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'flex' : 'none'; }
+          });
+        });
     loadNotifications();
     updateDMBadge();
     // Show DM and notif icons
@@ -798,7 +807,11 @@ function renderQuestion(q) {
     +(actions?'<div class="q-actions" style="margin-top:10px">'+actions+'</div>':'')
     +'</div>'
     +'<div id="answers-container"></div>'
-    +(currentUser?'<div class="answer-form"><h3>Sua Resposta</h3><textarea id="answer-text" placeholder="Escreva sua resposta aqui..."></textarea><button class="btn-full btn-yellow" style="margin-top:8px" onclick="submitAnswer(\''+q.id+'\')">Publicar Resposta</button></div>':'');
+    +(currentUser
+      ? (q.solved
+        ? '<div style="background:linear-gradient(135deg,#0a1a0a,#0d200d);border:1.5px solid rgba(34,197,94,.3);border-radius:12px;padding:14px;text-align:center;margin-top:10px"><span style="font-size:13px;color:#22c55e;font-weight:700">✅ Pergunta encerrada — já foi resolvida</span></div>'
+        : '<div class="answer-form"><h3>Sua Resposta</h3><textarea id="answer-text" placeholder="Escreva sua resposta aqui..."></textarea><button class="btn-full btn-yellow" style="margin-top:8px" onclick="submitAnswer(\''+q.id+'\')">Publicar Resposta</button></div>')
+      : '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;margin-top:10px"><span style="font-size:13px;color:var(--text2)">Faça login para responder</span></div>');
   el.innerHTML = html;
 }
 
@@ -882,6 +895,13 @@ function submitAnswer(qid) {
   db.collection('questions').doc(qid).collection('answers').add(answer).then(function() {
     db.collection('questions').doc(qid).update({answerCount: firebase.firestore.FieldValue.increment(1)});
     db.collection('users').doc(currentUser.uid).update({answersCount: firebase.firestore.FieldValue.increment(1)});
+    // Notificar dono da pergunta
+    db.collection('questions').doc(qid).get().then(function(qDoc) {
+      if (qDoc.exists) {
+        var qd = qDoc.data();
+        sendNotification(qd.authorId, 'answer', {questionId: qid, questionTitle: qd.title});
+      }
+    });
     document.getElementById('answer-text').value = '';
     toast('Resposta publicada!');
     loadAnswers(qid);
@@ -910,7 +930,12 @@ function voteAnswer(aid, type) {
         update.likedBy = firebase.firestore.FieldValue.arrayUnion(uid);
         if (disliked) { update.dislikes=firebase.firestore.FieldValue.increment(-1); update.dislikedBy=firebase.firestore.FieldValue.arrayRemove(uid); authorRef.update({totalDislikes:firebase.firestore.FieldValue.increment(-1)}); }
         authorRef.update({totalLikes:firebase.firestore.FieldValue.increment(1),points:firebase.firestore.FieldValue.increment(1)});
-        if (data.authorId!==uid) toast('+1 ponto para '+data.authorNickname+'!');
+        if (data.authorId!==uid) {
+          toast('+1 ponto para '+data.authorNickname+'!');
+          db.collection('questions').doc(currentQId).get().then(function(qDoc) {
+            sendNotification(data.authorId, 'like', {questionId: currentQId, questionTitle: qDoc.exists ? qDoc.data().title : ''});
+          });
+        }
       }
     } else {
       if (disliked) {
@@ -1018,6 +1043,15 @@ function markAnswerSolved(qid, aid) {
   batch.update(db.collection('questions').doc(qid).collection('answers').doc(aid), {best: true});
   batch.commit().then(function() {
     toast('✓ Melhor resposta marcada!');
+    // Notificar autor da resposta
+    db.collection('questions').doc(qid).collection('answers').doc(aid).get().then(function(aDoc) {
+      if (aDoc.exists) {
+        var ad = aDoc.data();
+        db.collection('questions').doc(qid).get().then(function(qDoc) {
+          sendNotification(ad.authorId, 'solved', {questionId: qid, questionTitle: qDoc.exists ? qDoc.data().title : ''});
+        });
+      }
+    });
     loadQuestion(qid);
   });
 }
@@ -1580,34 +1614,110 @@ function updateDMBadge() {
 }
 
 // ── NOTIFICATIONS ────────────────────────────────────────────
+// ── NOTIFICATIONS ────────────────────────────────────────────
+function sendNotification(toUid, type, data) {
+  if (!toUid || toUid === currentUser.uid) return; // não notifica a si mesmo
+  db.collection('notifications').add({
+    to: toUid,
+    type: type, // 'answer' | 'like' | 'friend_request'
+    fromUid: currentUser.uid,
+    fromNick: currentUserData.nickname || 'Usuario',
+    fromPhoto: currentUserData.photoURL || '',
+    data: data || {},
+    read: false,
+    createdAt: firebase.firestore.Timestamp.now()
+  });
+}
+
 function loadNotifications() {
   if (!currentUser) return;
   var el = document.getElementById('notif-content');
   if (!el) return;
-  db.collection('friendRequests').where('to', '==', currentUser.uid).where('status', '==', 'pending').get().then(function(snap) {
-    // Update badge
-    var badge = document.getElementById('notif-badge');
-    if (badge) {
-      badge.textContent = snap.size;
-      badge.style.display = snap.size > 0 ? 'flex' : 'none';
-    }
-    if (snap.empty) {
-      el.innerHTML = '<div class="empty"><div class="empty-icon">&#128276;</div><h3>Sem notificacoes</h3><p>Pedidos de amizade aparecerao aqui</p></div>';
-      return;
-    }
-    var html = '<h3 style="font-size:13px;color:var(--text2);margin-bottom:10px">Pedidos de amizade (' + snap.size + ')</h3>';
+  db.collection('notifications').where('to','==',currentUser.uid)
+    .orderBy('createdAt','desc').limit(30).get().then(function(snap) {
+    var unread = 0;
+    var items = [];
     snap.forEach(function(doc) {
-      var d = doc.data();
-      html += '<div class="rank-item" style="margin-bottom:8px">'
-        + '<div style="flex:1"><div style="font-size:14px;font-weight:700">' + esc(d.fromNick||'') + '</div>'
-        + '<div style="font-size:11px;color:var(--text2)">quer ser seu amigo</div></div>'
-        + '<div style="display:flex;gap:6px">'
-        + '<button class="friend-btn accepted" onclick="respondFriendRequest(\'' + doc.id + '\',true,\'' + d.from + '\')">Aceitar</button>'
-        + '<button class="friend-btn" onclick="respondFriendRequest(\'' + doc.id + '\',false,\'' + d.from + '\')">Recusar</button>'
-        + '</div></div>';
+      var d = doc.data(); d._id = doc.id;
+      if (!d.read) unread++;
+      items.push(d);
     });
-    el.innerHTML = html;
+    // Also count pending friend requests for badge
+    db.collection('friendRequests').where('to','==',currentUser.uid).where('status','==','pending').get().then(function(frSnap) {
+      var totalBadge = unread + frSnap.size;
+      var badge = document.getElementById('notif-badge');
+      if (badge) { badge.textContent = totalBadge; badge.style.display = totalBadge > 0 ? 'flex' : 'none'; }
+
+      var html = '';
+      // Friend requests first
+      frSnap.forEach(function(doc) {
+        var d = doc.data();
+        var photo = getPhotoURL(d.from, d.fromPhoto||'');
+        var initial = (d.fromNick||'U')[0].toUpperCase();
+        var avatarHTML = photo
+          ? '<img src="'+esc(photo)+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);flex-shrink:0" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
+            +'<div style="display:none;width:36px;height:36px;border-radius:50%;background:var(--bg3);border:1.5px solid var(--border);align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--yellow)">'+initial+'</div>'
+          : '<div style="width:36px;height:36px;border-radius:50%;background:var(--bg3);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--yellow)">'+initial+'</div>';
+        html += '<div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid rgba(245,197,24,.2);border-radius:12px;padding:12px;margin-bottom:8px">'
+          +avatarHTML
+          +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#fff">'+esc(d.fromNick||'')+'</div>'
+          +'<div style="font-size:12px;color:var(--text2)">quer ser seu amigo</div></div>'
+          +'<div style="display:flex;gap:6px">'
+          +'<button class="friend-btn accepted" style="padding:5px 10px;font-size:11px" onclick="respondFriendRequest(\''+doc.id+'\',true,\''+d.from+'\')">Aceitar</button>'
+          +'<button class="friend-btn" style="padding:5px 10px;font-size:11px" onclick="respondFriendRequest(\''+doc.id+'\',false,\''+d.from+'\')">Recusar</button>'
+          +'</div></div>';
+      });
+
+      // Activity notifications
+      if (items.length) {
+        items.forEach(function(d) {
+          var photo = getPhotoURL(d.fromUid, d.fromPhoto||'');
+          var initial = (d.fromNick||'U')[0].toUpperCase();
+          var avatarHTML = photo
+            ? '<img src="'+esc(photo)+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);flex-shrink:0" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
+              +'<div style="display:none;width:36px;height:36px;border-radius:50%;background:var(--bg3);align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--yellow)">'+initial+'</div>'
+            : '<div style="width:36px;height:36px;border-radius:50%;background:var(--bg3);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--yellow)">'+initial+'</div>';
+          var msg = '';
+          var icon = '';
+          if (d.type === 'answer') {
+            icon = '💬';
+            msg = 'respondeu sua pergunta: <strong>'+esc((d.data&&d.data.questionTitle)||'')+'</strong>';
+          } else if (d.type === 'like') {
+            icon = '👍';
+            msg = 'curtiu sua resposta em: <strong>'+esc((d.data&&d.data.questionTitle)||'')+'</strong>';
+          } else if (d.type === 'solved') {
+            icon = '✅';
+            msg = 'marcou sua resposta como melhor em: <strong>'+esc((d.data&&d.data.questionTitle)||'')+'</strong>';
+          }
+          var bg = d.read ? 'var(--bg2)' : 'linear-gradient(135deg,#111120,#191928)';
+          var border = d.read ? '1px solid var(--border)' : '1px solid rgba(245,197,24,.25)';
+          var ago = d.createdAt ? timeAgo(d.createdAt.toDate()) : '';
+          var clickAction = d.data && d.data.questionId ? 'onclick="markNotifRead(\''+d._id+'\');openQuestion(\''+d.data.questionId+'\')"' : '';
+          html += '<div style="display:flex;align-items:center;gap:10px;background:'+bg+';border:'+border+';border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer" '+clickAction+'>'
+            +avatarHTML
+            +'<div style="flex:1">'
+            +'<div style="font-size:13px;color:#e8e8f0">'+icon+' <strong style="color:var(--yellow)">'+esc(d.fromNick||'')+'</strong> '+msg+'</div>'
+            +'<div style="font-size:11px;color:var(--text2);margin-top:3px">'+ago+'</div>'
+            +'</div>'
+            +(d.read?'':'<div style="width:8px;height:8px;border-radius:50%;background:var(--yellow);flex-shrink:0"></div>')
+            +'</div>';
+        });
+        // Mark all as read
+        items.forEach(function(d) {
+          if (!d.read) db.collection('notifications').doc(d._id).update({read:true});
+        });
+      }
+
+      if (!html) {
+        html = '<div class="empty"><div class="empty-icon">🔔</div><h3>Sem notificações</h3><p>Aqui aparecem respostas, curtidas e pedidos de amizade</p></div>';
+      }
+      el.innerHTML = '<h3 style="font-size:15px;font-weight:800;margin-bottom:12px">Notificações</h3>' + html;
+    });
   });
+}
+
+function markNotifRead(nid) {
+  db.collection('notifications').doc(nid).update({read:true});
 }
 
 // ── EDIT PROFILE ─────────────────────────────────────────────
