@@ -612,17 +612,42 @@ function renderNavAuth() {
   var area = document.getElementById('nav-auth-area');
   if (currentUser && currentUserData) {
     var nick = currentUserData.nickname||'U';
-    var photo = currentUserData.photoURL||'';
+    var photo = getPhotoURL(currentUser.uid, currentUserData.photoURL||'');
     var initial = nick[0].toUpperCase();
-    var imgStyle = 'width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--yellow);cursor:pointer';
-    var photoHTML = photo
-      ? '<img src="'+esc(photo)+'" style="'+imgStyle+'" onclick="showPage(\'profile\')">'
-      : '<div class="nav-avatar" onclick="showPage(\'profile\')">'+initial+'</div>';
     var isAdminMod = currentUserData.role==='admin'||currentUserData.role==='mod';
-    var adminBtn = isAdminMod ? '<button class="nav-btn" onclick="showPage(\'admin\')" style="font-size:10px;padding:4px 8px">Admin</button>' : '';
-    area.innerHTML = photoHTML + adminBtn;
+    var imgStyle = 'width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--yellow);cursor:pointer;flex-shrink:0';
+    var avatarHTML = photo
+      ? '<img src="'+esc(photo)+'" style="'+imgStyle+'" onclick="toggleNavMenu()" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
+        +'<div class="nav-avatar" style="display:none" onclick="toggleNavMenu()">'+initial+'</div>'
+      : '<div class="nav-avatar" onclick="toggleNavMenu()">'+initial+'</div>';
+    var menuHTML = '<div id="nav-user-menu" style="display:none;position:absolute;top:54px;right:8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:8px;min-width:160px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5)">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--yellow);padding:6px 8px 10px;border-bottom:1px solid var(--border);margin-bottom:6px">'+esc(nick)+'</div>'
+      +'<button onclick="toggleNavMenu();showPage(\'profile\')" style="display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;color:var(--text);font-size:13px;padding:8px;border-radius:8px;cursor:pointer;text-align:left" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'none\'">'
+      +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Meu Perfil</button>'
+      +(isAdminMod ? '<button onclick="toggleNavMenu();showPage(\'admin\')" style="display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;color:var(--text);font-size:13px;padding:8px;border-radius:8px;cursor:pointer;text-align:left" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'none\'">'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Admin</button>' : '')
+      +'<div style="border-top:1px solid var(--border);margin:6px 0"></div>'
+      +'<button onclick="toggleNavMenu();doLogout()" style="display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;color:#ef4444;font-size:13px;padding:8px;border-radius:8px;cursor:pointer;text-align:left" onmouseover="this.style.background=\'rgba(239,68,68,.1)\'" onmouseout="this.style.background=\'none\'">'
+      +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sair</button>'
+      +'</div>';
+    area.innerHTML = '<div style="position:relative">'+avatarHTML+menuHTML+'</div>';
   } else {
     area.innerHTML = '<button class="nav-btn primary" onclick="showPage(\'auth\')">Entrar</button>';
+  }
+}
+
+function toggleNavMenu() {
+  var menu = document.getElementById('nav-user-menu');
+  if (!menu) return;
+  var isOpen = menu.style.display !== 'none';
+  menu.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    // Close when clicking outside
+    setTimeout(function() {
+      document.addEventListener('click', function handler(e) {
+        if (!menu.contains(e.target)) { menu.style.display = 'none'; document.removeEventListener('click', handler); }
+      });
+    }, 10);
   }
 }
 
