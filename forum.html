@@ -529,14 +529,16 @@ auth.onAuthStateChanged(function(user) {
       renderNavAuth();
       setupPresence();
       // Badge em tempo real
-      db.collection('notifications').where('to','==',user.uid).where('read','==',false)
-        .onSnapshot(function(snap) {
-          db.collection('friendRequests').where('to','==',user.uid).where('status','==','pending').get().then(function(frSnap) {
-            var total = snap.size + frSnap.size;
-            var badge = document.getElementById('notif-badge');
-            if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'flex' : 'none'; }
-          });
-        });
+      try {
+        db.collection('notifications').where('to','==',user.uid).where('read','==',false)
+          .onSnapshot(function(snap) {
+            db.collection('friendRequests').where('to','==',user.uid).where('status','==','pending').get().then(function(frSnap) {
+              var total = snap.size + frSnap.size;
+              var badge = document.getElementById('notif-badge');
+              if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'flex' : 'none'; }
+            });
+          }, function(err) { console.warn('Notif listener:', err); });
+      } catch(e) { console.warn('Notif setup:', e); }
     loadNotifications();
     updateDMBadge();
     // Show DM and notif icons
@@ -1634,13 +1636,19 @@ function loadNotifications() {
   var el = document.getElementById('notif-content');
   if (!el) return;
   db.collection('notifications').where('to','==',currentUser.uid)
-    .orderBy('createdAt','desc').limit(30).get().then(function(snap) {
+    .limit(30).get().then(function(snap) {
     var unread = 0;
     var items = [];
     snap.forEach(function(doc) {
       var d = doc.data(); d._id = doc.id;
       if (!d.read) unread++;
       items.push(d);
+    });
+    // Sort client-side to avoid composite index
+    items.sort(function(a,b) {
+      var ta = a.createdAt ? a.createdAt.toMillis() : 0;
+      var tb = b.createdAt ? b.createdAt.toMillis() : 0;
+      return tb - ta;
     });
     // Also count pending friend requests for badge
     db.collection('friendRequests').where('to','==',currentUser.uid).where('status','==','pending').get().then(function(frSnap) {
