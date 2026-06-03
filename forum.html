@@ -1359,6 +1359,7 @@ function renderChat(msgs) {
   var wasAtBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 50;
   el.innerHTML = msgs.map(function(m) {
     var isOwn = currentUser && m.uid === currentUser.uid;
+    var isAdmin = currentUserData && (currentUserData.role==='admin'||currentUserData.role==='mod');
     var roleClass = m.role==='admin'?'role-admin':m.role==='mod'?'role-mod':'role-user';
     var roleLabel = m.role==='admin'?'Admin':m.role==='mod'?'Mod':'';
     var time = m.ts ? new Date(m.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
@@ -1369,15 +1370,49 @@ function renderChat(msgs) {
       + '<span style="font-size:12px;font-weight:700;color:var(--yellow)">'+(isOwn ? 'Você' : esc(m.nick||''))+'</span>'
       + (roleLabel ? '<span class="answer-role '+roleClass+'" style="font-size:9px;padding:1px 4px">'+roleLabel+'</span>' : '')
       + '</div>';
+    var deleteBtn = (isOwn || isAdmin)
+      ? '<button onclick="deleteChatMsg(\''+m.id+'\')" style="background:transparent;border:none;cursor:pointer;padding:2px 4px;color:#4a4a5a;font-size:10px;line-height:1;margin-top:2px;transition:.15s" onmouseover="this.style.color=\'#ef4444\'" onmouseout="this.style.color=\'#4a4a5a\'"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>'
+      : '';
     var cls = isOwn ? 'chat-msg own' : 'chat-msg';
-    return '<div class="'+cls+'">'+avatarContent
+    return '<div class="'+cls+'" style="align-items:flex-start">'+avatarContent
+      +'<div style="display:flex;flex-direction:column;align-items:'+(isOwn?'flex-end':'flex-start')+';max-width:75%">'
       +'<div class="chat-bubble">'+nickEl
       +'<div class="chat-text">'+esc(m.text||'')+'</div>'
       +'<div class="chat-time">'+time+'</div>'
+      +'</div>'
+      +deleteBtn
       +'</div></div>';
   }).join('');
   if (wasAtBottom) el.scrollTop = el.scrollHeight;
 }
+
+function deleteChatMsg(msgId) {
+  rtdb.ref('chat/'+msgId).remove();
+}
+
+// Auto-clear chat every 12h
+function scheduleChatClear() {
+  var KEY = 'chat_last_clear';
+  var last = parseInt(localStorage.getItem(KEY)||'0');
+  var now = Date.now();
+  var TWELVE_HOURS = 12 * 60 * 60 * 1000;
+  function clearChat() {
+    if (currentUserData && (currentUserData.role==='admin'||currentUserData.role==='mod')) {
+      rtdb.ref('chat').remove();
+      localStorage.setItem(KEY, Date.now().toString());
+    }
+  }
+  if (now - last > TWELVE_HOURS) {
+    // Wait for auth to resolve
+    setTimeout(function() { if (currentUser) clearChat(); }, 3000);
+  }
+  // Schedule next check
+  setInterval(function() {
+    var l = parseInt(localStorage.getItem(KEY)||'0');
+    if (Date.now() - l > TWELVE_HOURS && currentUser) clearChat();
+  }, 60 * 60 * 1000); // check every hour
+}
+scheduleChatClear();
 
 function sendChat() {
   if (!currentUser||!currentUserData) return;
@@ -1798,6 +1833,8 @@ function loadNotifications() {
       }
       el.innerHTML = '<h3 style="font-size:15px;font-weight:800;margin-bottom:12px">Notificações</h3>' + html;
     });
+  }).catch(function(err) {
+    if (el) el.innerHTML = '<div class="empty"><h3>Sem notificações</h3><p>Nenhuma ainda.</p></div>';
   });
 }
 
