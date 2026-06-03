@@ -1395,24 +1395,27 @@ function renderChat(msgs) {
     var time = m.ts ? new Date(m.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
     var sameGroup = (m.uid === prevUid) && (m.ts - prevTs < 120000);
     prevUid = m.uid; prevTs = m.ts||0;
+
     var avatarContent = '';
     if (!sameGroup) {
       avatarContent = m.photo
-        ? '<img src="'+esc(m.photo)+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);flex-shrink:0;cursor:pointer" onclick="viewProfile(''+m.uid+'')">'
-        : '<div class="chat-avatar" style="cursor:pointer;font-size:11px" onclick="viewProfile(''+m.uid+'')">'+((m.nick||'U')[0].toUpperCase())+'</div>';
+        ? '<img src="'+esc(m.photo)+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);flex-shrink:0;cursor:pointer" onclick="viewProfile(\'' + m.uid + '\')">'
+        : '<div class="chat-avatar" style="cursor:pointer;font-size:11px" onclick="viewProfile(\'' + m.uid + '\')">' + ((m.nick||'U')[0].toUpperCase()) + '</div>';
     } else {
       avatarContent = '<div style="width:28px;flex-shrink:0"></div>';
     }
+
     var replyHtml = '';
     if (m.replyTo) {
       replyHtml = '<div style="background:rgba(255,255,255,.05);border-left:2px solid #f5c518;border-radius:4px;padding:4px 8px;margin-bottom:4px;font-size:11px;opacity:.8">'
-        +'<span style="color:#f5c518;font-weight:700">'+esc(m.replyTo.nick||'')+'</span>'
-        +' <span style="color:#9090a8">'+esc((m.replyTo.text||'').substring(0,60))+'</span>'
-        +'</div>';
+        + '<span style="color:#f5c518;font-weight:700">' + esc(m.replyTo.nick||'') + '</span>'
+        + ' <span style="color:#9090a8">' + esc((m.replyTo.text||'').substring(0,60)) + '</span>'
+        + '</div>';
     }
+
     var reactions = m.reactions || {};
     var reactionKeys = ['thumbsup','heart','joy','fire','clap'];
-    var emojiMap = {thumbsup:'👍',heart:'❤️',joy:'😂',fire:'🔥',clap:'👏'};
+    var emojiMap = {thumbsup:'&#128077;',heart:'&#10084;&#65039;',joy:'&#128514;',fire:'&#128293;',clap:'&#128079;'};
     var reactHtml = '';
     reactionKeys.forEach(function(key) {
       var emoji = emojiMap[key];
@@ -1420,45 +1423,50 @@ function renderChat(msgs) {
       var count = Object.keys(uids).length;
       var iMine = currentUser && uids[currentUser.uid];
       if (count > 0) {
-        reactHtml += '<button onclick="toggleReaction(''+m.id+'',''+key+'')" style="background:'+(iMine?'rgba(245,197,24,.2)':'rgba(255,255,255,.07)')+';border:1px solid '+(iMine?'rgba(245,197,24,.5)':'transparent')+';border-radius:10px;padding:2px 7px;font-size:12px;cursor:pointer;color:#e8e8f0">'+emoji+' '+count+'</button>';
+        reactHtml += '<button onclick="toggleReaction(\'' + m.id + '\',\'' + key + '\')" style="background:' + (iMine?'rgba(245,197,24,.2)':'rgba(255,255,255,.07)') + ';border:1px solid ' + (iMine?'rgba(245,197,24,.5)':'transparent') + ';border-radius:10px;padding:2px 7px;font-size:12px;cursor:pointer;color:#e8e8f0">' + emoji + ' ' + count + '</button>';
       }
     });
+
     var nickRow = '';
     if (!sameGroup) {
       nickRow = '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'
-        +'<span style="font-size:12px;font-weight:700;color:'+(isOwn?'#f5c518':'#c8c8d8')+';cursor:pointer" onclick="viewProfile(''+m.uid+'')">'+(isOwn?'Voce':esc(m.nick||''))+'</span>'
-        +(roleLabel?'<span class="answer-role '+roleClass+'" style="font-size:9px;padding:1px 4px">'+roleLabel+'</span>':'')
-        +'<span style="font-size:10px;color:#5a5a6a">'+time+'</span>'
-        +'</div>';
+        + '<span style="font-size:12px;font-weight:700;color:' + (isOwn?'#f5c518':'#c8c8d8') + ';cursor:pointer" onclick="viewProfile(\'' + m.uid + '\')">' + (isOwn?'Voce':esc(m.nick||'')) + '</span>'
+        + (roleLabel?'<span class="answer-role '+roleClass+'" style="font-size:9px;padding:1px 4px">'+roleLabel+'</span>':'')
+        + '<span style="font-size:10px;color:#5a5a6a">' + time + '</span>'
+        + '</div>';
     }
+
     var canDelete = isOwn || isAdmin;
     var canPin = isAdmin;
-    var actBtns = '<div class="chat-act" style="display:none;align-items:center;flex-shrink:0">'
-      +'<button title="Reagir" onclick="showReactionPicker(''+m.id+'',this)" style="background:transparent;border:none;cursor:pointer;padding:4px 5px;font-size:13px;border-radius:5px;color:var(--text2)">😊</button>'
-      +'<button title="Responder" onclick="setReply(''+m.id+'',''+esc(m.nick||'')+'',''+esc((m.text||'').substring(0,60))+'')" style="background:transparent;border:none;cursor:pointer;padding:4px 5px;border-radius:5px;color:var(--text2)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>'
-      +(canPin?'<button title="Fixar" onclick="pinChatMsg(''+esc(m.text||'')+'')" style="background:transparent;border:none;cursor:pointer;padding:4px 5px;border-radius:5px;color:var(--text2)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17H19V15L17 7V3H7V7L5 15Z"/></svg></button>':'')
-      +(canDelete?'<button title="Apagar" onclick="deleteChatMsg(''+m.id+'')" style="background:transparent;border:none;cursor:pointer;padding:4px 5px;border-radius:5px;color:#ef4444"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>':'')
-      +'</div>';
+
+    // Build action buttons using array join to avoid quote issues
+    var actParts = ['<div data-chat-act style="display:none;align-items:center;flex-shrink:0">'];
+    actParts.push('<button title="Reagir" onclick="showReactionPicker(\'' + m.id + '\',this)" style="background:transparent;border:none;cursor:pointer;padding:4px 5px;font-size:13px;border-radius:5px;color:var(--text2)">&#128522;</button>');
+    actParts.push('<button title="Responder" onclick="setReply(\'' + m.id + '\',\'' + esc(m.nick||'') + '\',\'' + esc((m.text||'').substring(0,60)) + '\')" style="background:transparent;border:none;cursor:pointer;padding:4px 5px;border-radius:5px;color:var(--text2)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></button>');
+    if (canPin) actParts.push('<button title="Fixar" onclick="pinChatMsg(\'' + esc(m.text||'') + '\')" style="background:transparent;border:none;cursor:pointer;padding:4px 5px;border-radius:5px;color:var(--text2)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17H19V15L17 7V3H7V7L5 15Z"/></svg></button>');
+    if (canDelete) actParts.push('<button title="Apagar" onclick="deleteChatMsg(\'' + m.id + '\')" style="background:transparent;border:none;cursor:pointer;padding:4px 5px;border-radius:5px;color:#ef4444"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>');
+    actParts.push('</div>');
+    var actBtns = actParts.join('');
+
     var cls = isOwn ? 'chat-msg own' : 'chat-msg';
-    html += '<div class="'+cls+'" style="align-items:flex-start;margin-bottom:'+(sameGroup?'2':'10')+'px;gap:8px"'
-      +' onmouseenter="var a=this.querySelectorAll('.chat-act');a.forEach(function(x){x.style.display='flex';})"'
-      +' onmouseleave="var a=this.querySelectorAll('.chat-act');a.forEach(function(x){x.style.display='none';})">'
-      +(isOwn ? actBtns : '')
+    html += '<div class="' + cls + '" style="align-items:flex-start;margin-bottom:' + (sameGroup?'2':'10') + 'px;gap:8px" onmouseenter="this.querySelectorAll('[data-chat-act]').forEach(function(x){x.style.display='flex'})" onmouseleave="this.querySelectorAll('[data-chat-act]').forEach(function(x){x.style.display='none'})">'
+      + (isOwn ? actBtns : '')
       + avatarContent
-      +'<div style="max-width:72%;min-width:0">'
-      +nickRow
-      +'<div class="chat-bubble" style="'+(isOwn?'background:#1a1800;border-color:rgba(245,197,24,.3)':'')+(m.role==='admin'?';border-color:#6b21a8;background:#1a0030':'')+'">'
-      +replyHtml
-      +'<div class="chat-text" style="word-break:break-word">'+esc(m.text||'')+'</div>'
-      +(reactHtml?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">'+reactHtml+'</div>':'')
-      +'</div>'
-      +'</div>'
-      +(!isOwn ? actBtns : '')
-      +'</div>';
+      + '<div style="max-width:72%;min-width:0">'
+      + nickRow
+      + '<div class="chat-bubble" style="' + (isOwn?'background:#1a1800;border-color:rgba(245,197,24,.3)':'') + (m.role==='admin'?';border-color:#6b21a8;background:#1a0030':'') + '">'
+      + replyHtml
+      + '<div class="chat-text" style="word-break:break-word">' + esc(m.text||'') + '</div>'
+      + (reactHtml?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">'+reactHtml+'</div>':'')
+      + '</div>'
+      + '</div>'
+      + (!isOwn ? actBtns : '')
+      + '</div>';
   });
   el.innerHTML = html || '<div style="text-align:center;padding:40px 20px;color:var(--text2);font-size:13px">Nenhuma mensagem ainda.</div>';
   if (wasAtBottom) el.scrollTop = el.scrollHeight;
 }
+
 
 function toggleReaction(msgId, key) {
   if (!currentUser) return;
