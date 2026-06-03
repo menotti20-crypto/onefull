@@ -500,6 +500,24 @@ body{background:var(--bg);color:var(--text);font-family:"SF Pro Display",-apple-
   </div>
 </div>
 
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal-box" style="text-align:center;padding:28px 24px">
+    <div style="display:flex;justify-content:center;margin-bottom:14px">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.5">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        <circle cx="12" cy="16" r="1" fill="#f5c518"/>
+      </svg>
+    </div>
+    <h3 style="font-size:18px;font-weight:900;margin-bottom:6px">Conteúdo restrito</h3>
+    <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:20px">Faça login ou crie uma conta para ver as respostas e participar da comunidade</p>
+    <button onclick="document.getElementById('modal-login').classList.remove('open');showPage('auth')" style="width:100%;padding:13px;border-radius:10px;background:var(--yellow);color:#000;border:none;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px">Entrar</button>
+    <button onclick="document.getElementById('modal-login').classList.remove('open');authMode='register';showPage('auth')" style="width:100%;padding:12px;border-radius:10px;background:transparent;color:var(--yellow);border:1.5px solid rgba(245,197,24,.4);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px">Criar conta grátis</button>
+    <button onclick="document.getElementById('modal-login').classList.remove('open')" style="background:transparent;border:none;color:var(--text2);font-size:13px;cursor:pointer">Cancelar</button>
+  </div>
+</div>
+
 <script>
 // ── FIREBASE CONFIG ──────────────────────────────────────────
 const firebaseConfig = {
@@ -719,32 +737,6 @@ function renderQuestions(list) {
     el.innerHTML = '<div class="empty"><div class="empty-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><h3>Nenhuma pergunta ainda</h3><p>Seja o primeiro a perguntar!</p></div>';
     return;
   }
-  // Se visitante e há perguntas — mostra preview com blur e CTA
-  if (!currentUser && list.length) {
-    var preview = list.slice(0, 3).map(function(q) {
-      var badge = q.solved ? '<span class="q-badge badge-solved">Resolvido</span>' : '<span class="q-badge badge-open">Aberto</span>';
-      var model = q.model ? '<span class="q-model">'+esc(q.model)+'</span>' : '';
-      var ansCount = q.answerCount||0;
-      var ansEl = ansCount>0 ? '<span class="q-answers has-answers">'+ansCount+' resposta'+(ansCount>1?'s':'')+'</span>' : '<span class="q-answers">0 respostas</span>';
-      return '<div class="q-card" style="pointer-events:none">'
-        +'<div class="q-card-top">'+badge+model+'</div>'
-        +'<div class="q-title">'+esc(q.title)+'</div>'
-        +'<div class="q-preview">'+esc(q.body||'')+'</div>'
-        +'<div class="q-footer">'+ansEl+'</div>'
-        +'</div>';
-    }).join('');
-
-    el.innerHTML = preview
-      + '<div style="position:relative;margin:-20px -4px 0;padding:60px 20px 28px;background:linear-gradient(to bottom,transparent,#0a0a0f 30%);border-radius:0 0 16px 16px;text-align:center">'
-      + '<div style="margin-bottom:12px;display:flex;justify-content:center"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="#f5c518"/></svg></div>'
-      + '<div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:6px">Junte-se à comunidade</div>'
-      + '<div style="font-size:13px;color:#9090a8;line-height:1.6;margin-bottom:20px">Veja todas as perguntas, respostas e resolva problemas do seu iPhone com quem entende</div>'
-      + '<button onclick="authMode=\'register\';showPage(\'auth\')" style="width:100%;padding:14px;border-radius:12px;background:var(--yellow);color:#000;border:none;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:10px;letter-spacing:.5px">Criar conta grátis</button>'
-      + '<button onclick="showPage(\'auth\')" style="width:100%;padding:12px;border-radius:12px;background:transparent;color:var(--text2);border:1.5px solid var(--border);font-size:14px;font-weight:600;cursor:pointer">Já tenho conta — Entrar</button>'
-      + '</div>';
-    return;
-  }
-
   el.innerHTML = list.map(function(q) {
     var badge = q.solved ? '<span class="q-badge badge-solved">Resolvido</span>' : '<span class="q-badge badge-open">Aberto</span>';
     var model = q.model ? '<span class="q-model">'+esc(q.model)+'</span>' : '';
@@ -753,7 +745,8 @@ function renderQuestions(list) {
     var ansEl = ansCount>0
       ? '<span class="q-answers has-answers"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> '+ansCount+' resposta'+(ansCount>1?'s':'')+'</span>'
       : '<span class="q-answers">0 respostas</span>';
-    var lockEl = !currentUser ? '<span class="q-locked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Login para ver respostas</span>' : '';
+    var lockEl = !currentUser ? '<span class="q-locked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Login para ver</span>' : '';
+    var lockIcon = !currentUser ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2" style="flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : '';
     var date = q.createdAt ? timeAgo(q.createdAt.toDate()) : '';
     var photo = getPhotoURL(q.authorId, q.authorPhotoURL);
     var initial = (q.authorNickname||'U')[0].toUpperCase();
@@ -761,30 +754,23 @@ function renderQuestions(list) {
       ? '<img src="'+esc(photo)+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;vertical-align:middle" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'inline-flex\'">'
         +'<div style="display:none;width:20px;height:20px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--yellow);flex-shrink:0;vertical-align:middle">'+initial+'</div>'
       : '<div style="width:20px;height:20px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--yellow);flex-shrink:0;vertical-align:middle">'+initial+'</div>';
-    return '<div class="q-card" onclick="openQuestion(\''+q.id+'\')">'
-      +'<div class="q-card-top">'+badge+model+errType+'</div>'
+    var clickAction = currentUser ? 'openQuestion(\''+q.id+'\')' : 'showLoginModal()';
+    var cardBorder = !currentUser ? 'border-color:rgba(245,197,24,.2)' : '';
+    return '<div class="q-card" onclick="'+clickAction+'" style="'+cardBorder+'">'
+      +'<div class="q-card-top">'+badge+model+errType+lockIcon+'</div>'
       +'<div class="q-title">'+esc(q.title)+'</div>'
       +'<div class="q-preview">'+esc(q.body||'')+'</div>'
       +'<div class="q-footer" style="align-items:center">'
-      +miniAvatar
-      +'<span class="q-meta"><strong>'+esc(q.authorNickname||'')+'</strong> &bull; '+date+'</span>'
+      +(currentUser ? miniAvatar+'<span class="q-meta"><strong>'+esc(q.authorNickname||'')+'</strong> &bull; '+date+'</span>' : '')
       +ansEl+lockEl
       +'</div>'
       +'</div>';
   }).join('');
 
-  // Banner de login para visitantes — aparece abaixo das perguntas
-  if (!currentUser) {
-    el.innerHTML += '<div style="margin-top:14px;background:linear-gradient(135deg,#111118 0%,#1a1a28 100%);border:1.5px solid rgba(245,197,24,.25);border-radius:14px;padding:20px 16px;text-align:center">'
-      +'<div style="margin-bottom:10px;display:flex;justify-content:center"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="#f5c518"/></svg></div>'
-      +'<div style="font-size:15px;font-weight:800;color:#e8e8f0;margin-bottom:6px">Acesse o fórum completo</div>'
-      +'<div style="font-size:13px;color:#9090a8;line-height:1.6;margin-bottom:16px">Faça login ou cadastre-se para ver as respostas, perguntar, votar e participar da comunidade</div>'
-      +'<div style="display:flex;gap:10px;justify-content:center">'
-      +'<button onclick="showPage(\'auth\')" style="background:#f5c518;color:#000;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer">Entrar</button>'
-      +'<button onclick="authMode=\'register\';showPage(\'auth\')" style="background:transparent;color:#f5c518;border:1.5px solid rgba(245,197,24,.4);border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer">Cadastrar</button>'
-      +'</div>'
-      +'</div>';
-  }
+}
+
+function showLoginModal() {
+  document.getElementById('modal-login').classList.add('open');
 }
 
 function switchTab(tab, el) {
