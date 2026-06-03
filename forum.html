@@ -248,8 +248,10 @@ body{background:var(--bg);color:var(--text);font-family:"SF Pro Display",-apple-
 .dm-item:hover{border-color:var(--yellow)}
 .dm-unread{background:var(--yellow);color:#000;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:700}
 .nav-icon-wrap{position:relative;display:inline-flex}
-.notif-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
 #notif-nav-wrap{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+.notif-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;min-width:16px;height:16px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px}
+@keyframes notif-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.7)}70%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
+.notif-badge.has-unread{animation:notif-pulse 1.8s ease-in-out infinite}
 /* ── ANALISADOR ── */
 .fi{display:none}
 .upload-card{background:#1c1c22;border:2px dashed #3a3a48;border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:12px;position:relative}
@@ -561,6 +563,7 @@ auth.onAuthStateChanged(function(user) {
               if (badge) {
                 badge.textContent = total;
                 badge.style.display = total > 0 ? 'flex' : 'none';
+                if (total > 0) { badge.classList.add('has-unread'); } else { badge.classList.remove('has-unread'); }
                 if (total > _lastNotifCount && _lastNotifCount >= 0) {
                   if (wrap) { wrap.style.transform='scale(1.3)'; setTimeout(function(){wrap.style.transform='';},300); }
                 }
@@ -614,7 +617,7 @@ function showPage(name) {
   if (name==='profile') loadProfile();
   if (name==='admin') loadAdmin();
   if (name==='dm') loadDMList();
-  if (name==='notif') { loadNotifications(); var b=document.getElementById('notif-badge'); if(b){b.style.display='none';} }
+  if (name==='notif') { loadNotifications(); var b=document.getElementById('notif-badge'); if(b){b.style.display='none';b.classList.remove('has-unread');} }
 }
 
 // ── AUTH ─────────────────────────────────────────────────────
